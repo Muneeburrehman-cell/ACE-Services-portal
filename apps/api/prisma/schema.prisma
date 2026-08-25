@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BD_AGENT
+  ESTIMATION_ENGINEER
+  DESIGN_ENGINEER
+  ADMIN
+}
+
+enum ProjectStatus {
+  received
+  proposal
+  follow_up
+  approved
+  declined
+  assigned
+  in_progress
+  delivered
+  sent_to_client
+}
+
+enum PriorityLevel {
+  low
+  medium
+  high
+  urgent
+}
+
+enum AuditEventType {
+  USER_LOGIN_SUCCESS
+  USER_LOGIN_FAILURE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  PROJECT_SUBMITTED
+  PROJECT_STATUS_UPDATED
+  PROJECT_ASSIGNED
+  PROJECT_REASSIGNED
+  DELIVERABLE_UPLOADED
+  SEND_TO_CLIENT_SUCCESS
+  SEND_TO_CLIENT_FAILURE
+  RFI_CREATED
+  RFI_ANSWERED
+  RFI_FORWARDED
+  USER_ACCOUNT_CREATED
+  USER_ACCOUNT_UPDATED
+  USER_ACCOUNT_DEACTIVATED
+  ROLE_CHANGED
+  USER_ACCOUNT_DELETED
+}
+
+model User {
+  id              String    @id @default(uuid())
+  fullName        String    @map("full_name") @db.VarChar(255)
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  role            UserRole
+  isActive        Boolean   @default(true) @map("is_active")
+  pendingSetup    Boolean   @default(false) @map("pending_setup")
+  lockoutUntil    DateTime? @map("lockout_until") @db.Timestamptz
+  failedLogins    Int       @default(0) @map("failed_logins")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  submittedProjects   Project[]            @relation("SubmittedBy")
+  assignedProjects    Project[]            @relation("AssignedTo")
+  statusChanges       ProjectStatusHistory[]
+  deliverables        Deliverable[]
+  clientDeliveries    ClientDeliveryLog[]  @relation("SentBy")
+  notifications       Notification[]
+  auditActorEntries   AuditLog[]
+  rfisRaised          ProjectRfi[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model Project {
+  id                  String        @id @default(uuid())
+  referenceNumber     String        @unique @map("reference_number") @db.VarChar(20)
+  bdAgentId           String        @map("bd_agent_id")
+  clientCompanyName   String        @default("") @map("client_company_name") @db.VarChar(255)
+  clientContactPerson String        @default("") @map("client_contact_person") @db.VarChar(255)
+  salespersonName     String?       @map("salesperson_name") @db.VarChar(255)
+  decidedPrice        Decimal?      @map("decided_price") @db.Decimal(10, 2)
+  merchantFeePercent  Float?        @map("merchant_fee_percent")
+  merchantFeeAmount   Decimal?      @map("merchant_fee_amount") @db.Decimal(10, 2)
+  totalPrice          Decimal?      @map("total_price") @db.Decimal(10, 2)
+  clientName          String        @default("") @map("client_name") @db.VarChar(255)
+  clientEmail         String        @map("client_email") @db.VarChar(255)
+  clientPhone         String        @map("client_phone") @db.VarChar(50)
+  scopeDescription    String        @map("scope_description")
+  requestedDeadline   DateTime      @map("requested_deadline") @db.Date
+  status              ProjectStatus @default(received)
+  followUpDate        DateTime?     @map("follow_up_date") @db.Timestamptz
+  followUpNotes       String?       @map("follow_up_notes")
+  internalDeadline    DateTime?     @map("internal_deadline") @db.Date
+  priority            PriorityLevel?
+  adminInstructions   String?       @map("admin_instructions")
+  invoice             String?
+  assignedTo          String?       @map("assigned_to")
+  projectType         String?       @default("estimation") @map("project_type") @db.VarChar(50) // estimation, design_drafting
+  submittedAt         DateTime      @default(now()) @map("submitted_at") @db.Timestamptz
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  bdAgent             User                   @relation("SubmittedBy", fields: [bdAgentId], references: [id])
+  assignedEngineer    User?                  @relation("AssignedTo", fields: [assignedTo], references: [id])
+  statusHistory       ProjectStatusHistory[]
+  files               ProjectFile[]
+  deliverables        Deliverable[]
+  clientDeliveryLogs  ClientDeliveryLog[]
+  rfis                ProjectRfi[]
+
+  @@index([bdAgentId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([projectType])
+  @@map("projects")
+}
+
+model ProjectRfi {
+  id                String    @id @default(uuid())
+  projectId         String    @map("project_id")
+  engineerId        String    @map("engineer_id")
+  title             String    @db.VarChar(255)
+  question          String
+  attachmentName    String?   @map("attachment_name") @db.VarChar(500)
+  attachmentS3Key   String?   @map("attachment_s3_key") @db.VarChar(1000)
+  status            String    @default("pending") // pending, forwarded_to_client, answered
+  adminAnswer       String?   @map("admin_answer")
+  clientAnswer      String?   @map("client_answer")
+  forwardedToClient Boolean   @default(false) @map("forwarded_to_client")
+  forwardedAt       DateTime? @map("forwarded_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  engineer User    @relation(fields: [engineerId], references: [id])
+
+  @@index([projectId])
+  @@map("project_rfis")
+}
+
+model ProjectStatusHistory {
+  id         String         @id @default(uuid())
+  projectId  String         @map("project_id")
+  fromStatus ProjectStatus? @map("from_status")
+  toStatus   ProjectStatus  @map("to_status")
+  changedBy  String         @map("changed_by")
+  changedAt  DateTime       @default(now()) @map("changed_at") @db.Timestamptz
+  notes      String?
+
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changedByUser User    @relation(fields: [changedBy], references: [id])
+
+  @@index([projectId])
+  @@map("project_status_history")
+}
+
+model ProjectFile {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  originalName String   @map("original_name") @db.VarChar(500)
+  s3Key        String   @unique @map("s3_key") @db.VarChar(1000)
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  sizeBytes    BigInt   @map("size_bytes")
+  category     String?  @default("drawing") @db.VarChar(50) // drawing, specification, takeoff, estimation_sheet, client_doc
+  uploadedBy   String?  @default("BD_AGENT") @map("uploaded_by") @db.VarChar(50)
+  uploadedAt   DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_files")
+}
+
+model Deliverable {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  engineerId   String   @map("engineer_id")
+  originalName String   @map("original_name") @db.VarChar(500)
+  s3Key        String   @unique @map("s3_key") @db.VarChar(1000)
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  sizeBytes    BigInt   @map("size_bytes")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  engineer User    @relation(fields: [engineerId], references: [id])
+
+  @@index([projectId])
+  @@map("deliverables")
+}
+
+model ClientDeliveryLog {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  sentBy         String   @map("sent_by")
+  recipientEmail String   @map("recipient_email") @db.VarChar(255)
+  subject        String   @db.VarChar(500)
+  deliveryMethod String   @map("delivery_method") @db.VarChar(20)
+  sentAt         DateTime @default(now()) @map("sent_at") @db.Timestamptz
+  success        Boolean
+  errorMessage   String?  @map("error_message")
+
+  project Project @relation(fields: [projectId], references: [id])
+  sender  User    @relation("SentBy", fields: [sentBy], references: [id])
+
+  @@map("client_delivery_log")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  eventType String   @map("event_type") @db.VarChar(100)
+  title     String   @db.VarChar(255)
+  body      String
+  metadata  Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         BigInt         @id @default(autoincrement())
+  eventType  AuditEventType @map("event_type")
+  actorId    String?        @map("actor_id")
+  actorRole  UserRole?      @map("actor_role")
+  targetId   String?        @map("target_id") @db.Uuid
+  metadata   Json?
+  occurredAt DateTime       @default(now()) @map("occurred_at") @db.Timestamptz
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([eventType])
+  @@index([occurredAt])
+  @@map("audit_log")
+}

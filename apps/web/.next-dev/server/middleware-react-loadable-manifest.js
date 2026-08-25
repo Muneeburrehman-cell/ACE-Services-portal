@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app\\\\login\\\\page.tsx -> @/components/ui/Construction3DCanvas\":{\"id\":\"app\\\\login\\\\page.tsx -> @/components/ui/Construction3DCanvas\",\"files\":[\"static/chunks/_app-pages-browser_components_ui_Construction3DCanvas_tsx.js\"]}}"
