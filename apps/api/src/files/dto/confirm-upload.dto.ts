@@ -7,7 +7,7 @@ export class ConfirmUploadDto {
   projectId: string;
 
   @IsString()
-  s3Key: string;
+  storageKey: string;
 
   @IsString()
   originalName: string;

@@ -141,7 +141,7 @@ TOTAL AMOUNT DUE:             $${totalDue.toFixed(2)}
       } else {
         const links = await Promise.all(
           project.deliverables.map(async (d) => {
-            const url = await this.files.getSignedUrlForDelivery(d.s3Key, 72 * 3600);
+            const url = await this.files.getSignedUrlForDelivery(d.s3Key);
             return `${d.originalName}: ${url}`;
           }),
         );

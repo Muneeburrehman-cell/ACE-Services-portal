@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Response, Request } from 'express';
 
-const DEMO_UPLOAD_DIR = path.join(process.cwd(), 'demo-uploads');
+const STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 @Controller('files')
 export class FilesController {
@@ -53,24 +53,19 @@ export class FilesController {
     return this.files.deleteFile(id, type);
   }
 
-  // ─── Demo-mode endpoints (dev only, no auth required) ────────────────
-  // These simulate S3 pre-signed upload/download for local development.
-  // Blocked in production (NODE_ENV=production).
+  // ─── Local storage endpoints ──────────────────────────────────────────
+  // Handle file uploads and downloads from local disk storage
 
-  @Put('demo-upload')
+  @Put('upload')
   @Header('Access-Control-Allow-Origin', '*')
   @Header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
   @Header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  demoUpload(@Query('key') key: string, @Req() req: Request, @Res() res: Response) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ message: 'Not available in production' });
-    }
-
+  async upload(@Query('key') key: string, @Req() req: Request, @Res() res: Response) {
     const safeName = (key ?? 'unknown').replace(/[/\\:*?"<>|]/g, '_');
-    const filePath = path.join(DEMO_UPLOAD_DIR, safeName);
+    const filePath = path.join(STORAGE_DIR, safeName);
 
     try {
-      fs.mkdirSync(DEMO_UPLOAD_DIR, { recursive: true });
+      fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
       const chunks: Buffer[] = [];
       req.on('data', (chunk: Buffer) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
@@ -78,7 +73,7 @@ export class FilesController {
         try {
           const data = chunks.length > 0 ? Buffer.concat(chunks) : Buffer.from('[empty]');
           fs.writeFileSync(filePath, data);
-          res.status(200).send('OK');
+          res.status(200).json({ success: true });
         } catch (err) {
           res.status(500).json({ message: 'Write failed' });
         }
@@ -89,23 +84,18 @@ export class FilesController {
     }
   }
 
-  @Get('demo-download')
-  demoDownload(
+  @Get('download')
+  async download(
     @Query('key') key: string,
-    @Query('name') name: string,
     @Res() res: Response,
   ) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ message: 'Not available in production' });
-    }
-
     const safeName = (key ?? 'unknown').replace(/[/\\:*?"<>|]/g, '_');
-    const filePath = path.join(DEMO_UPLOAD_DIR, safeName);
+    const filePath = path.join(STORAGE_DIR, safeName);
 
     if (fs.existsSync(filePath)) {
-      res.download(filePath, name ?? safeName);
+      res.download(filePath, safeName);
     } else {
-      res.status(404).json({ message: 'File not found in demo storage' });
+      res.status(404).json({ message: 'File not found in storage' });
     }
   }
 }

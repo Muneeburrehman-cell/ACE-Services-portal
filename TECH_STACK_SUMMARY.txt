@@ -1,0 +1,99 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  ACE SERVICES PORTAL - TECH STACK OVERVIEW                    ║
+║                                    v1.1                                        ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ FRONTEND (Next.js, React, Tailwind CSS)                                      ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • Next.js 14.2.5                     Framework for production-ready React    ┃
+┃ • React 18.3.1                       Modern UI library                       ┃
+┃ • TypeScript 5                       Type-safe JavaScript                    ┃
+┃ • Tailwind CSS 3.4.6                 Utility-first CSS framework            ┃
+┃ • React Hook Form 7.52.1             Efficient form management              ┃
+┃ • Zod 3.23.8                         Schema validation                       ┃
+┃ • Axios 1.7.2                        HTTP client                             ┃
+┃ • Socket.io Client 4.7.5             Real-time communication                 ┃
+┃ • Date-fns 3.6.0                     Date utilities                          ┃
+┃ • CLSX 2.1.1                         Conditional CSS classes                 ┃
+┃ • js-cookie 3.0.5                    Cookie management                       ┃
+┃ • Jose 5.6.3                         JWT handling                            ┃
+┃ • ESLint 8 + Prettier 3              Code quality                            ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+Port: 3000 | Entry: http://localhost:3000
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ BACKEND (NestJS, Node.js)                                                    ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • NestJS 11.0.1                      Production-ready Node.js framework      ┃
+┃ • TypeScript 5.7.3                   Type-safe development                   ┃
+┃ • Express 5                          HTTP server (via NestJS)                ┃
+┃ • Passport.js 0.7.0                  Authentication middleware                ┃
+┃ • JWT (@nestjs/jwt)                  Token-based authentication               ┃
+┃ • Bcrypt 6.0.0                       Password hashing                         ┃
+┃ • Helmet 8.3.0                       Security headers                        ┃
+┃ • Socket.io 4.8.3                    WebSocket server                        ┃
+┃ • Prisma 5.22.0                      Database ORM                            ┃
+┃ • Resend 6.21.0                      Email delivery (PRIMARY)                ┃
+┃ • ExcelJS 4.4.0                      Excel file handling                     ┃
+┃ • RxJS 7.8.1                         Reactive programming                    ┃
+┃ • Class Validator 0.15.1             DTO validation                          ┃
+┃ • Jest 30.0.0                        Testing framework                       ┃
+┃ • ESLint 9 + Prettier 3              Code quality                            ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+Port: 4000 | Entry: http://localhost:4000/api
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ DATABASE & STORAGE                                                           ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • PostgreSQL                         Relational database                     ┃
+┃ • Prisma 5.22.0                      ORM & migrations                        ┃
+┃ • Local Storage (uploads/)           File management (100 MB per file)       ┃
+┃ • Database Models: 10                User, Project, Files, Audit, etc.       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ DEPLOYMENT & HOSTING                                                         ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • Cloudflare                         DNS, SSL/TLS, CDN, WAF, DDoS            ┃
+┃ • Node.js Server                     Backend hosting                         ┃
+┃ • PostgreSQL Hosting                 Database (AWS RDS, Heroku, etc.)       ┃
+┃ • Email via Resend API               Email delivery service                 ┃
+┃ • Package Manager: pnpm              Workspaces (monorepo)                   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ KEY FEATURES                                                                 ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ ✅ JWT Authentication                Secure token-based auth                 ┃
+┃ ✅ Role-Based Access Control         4 user roles with permissions           ┃
+┃ ✅ Real-time Notifications           WebSocket via Socket.io                 ┃
+┃ ✅ File Management                   Upload/download with validation         ┃
+┃ ✅ Email Delivery                    Resend (primary provider)               ┃
+┃ ✅ Audit Logging                     Complete action audit trail             ┃
+┃ ✅ Database Migrations               Prisma versioned migrations             ┃
+┃ ✅ Account Lockout                   Protection against brute force          ┃
+┃ ✅ CORS Protection                   Cross-origin security                   ┃
+┃ ✅ Rate Limiting                     API endpoint protection                 ┃
+┃ ✅ TypeScript Strict Mode            Full type safety                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ REMOVED IN REFACTORING v1.1                                                  ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ ❌ 2FA/TOTP Authentication            (Removed - architecture ready if needed)┃
+┃ ❌ AWS S3 Integration                 (Replaced with local storage)          ┃
+┃ ❌ Cloudflare R2                      (Replaced with local storage)          ┃
+┃ ❌ SendGrid Email Provider            (Replaced with Resend)                 ┃
+┃ ❌ Nodemailer/SMTP                    (Replaced with Resend)                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ STATUS: ✅ PRODUCTION-READY                                                  ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Version:     1.1 (Post-Refactoring)                                          ┃
+┃ Date:        2026-08-26                                                      ┃
+┃ Servers:     Both running (API + Web)                                        ┃
+┃ Compilation: ✅ All checks pass                                              ┃
+┃ Status:      Ready for development                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛

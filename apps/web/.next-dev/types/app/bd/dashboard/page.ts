@@ -1,8 +1,8 @@
-// File: D:\Portal\apps\web\app\admin\projects\[id]\page.tsx
-import * as entry from '../../../../../../app/admin/projects/[id]/page.js'
+// File: D:\ACE Services portal\apps\web\app\bd\dashboard\page.tsx
+import * as entry from '../../../../../app/bd/dashboard/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
-type TEntry = typeof import('../../../../../../app/admin/projects/[id]/page.js')
+type TEntry = typeof import('../../../../../app/bd/dashboard/page.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{

@@ -29,9 +29,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) implements OnModuleI
   }
 
   async validate(payload: any) {
-    if (payload.pre2fa) {
-      throw new UnauthorizedException('2FA verification required');
-    }
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, role: true, isActive: true, pendingSetup: true },
