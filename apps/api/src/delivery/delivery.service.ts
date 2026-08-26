@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { FilesService } from '../files/files.service';
 import { EmailService } from '../email/email.service';
+import { EmailTriggersService } from '../email/email.triggers.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditEventType, ProjectStatus, UserRole } from '@prisma/client';
 
@@ -11,12 +12,15 @@ const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25 MB
 
 @Injectable()
 export class DeliveryService {
+  private logger = new Logger('DeliveryService');
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
     private files: FilesService,
     private config: ConfigService,
     private emailService: EmailService,
+    private emailTriggers: EmailTriggersService,
     private notifications: NotificationsService,
   ) {}
 
@@ -190,6 +194,19 @@ TOTAL AMOUNT DUE:             $${totalDue.toFixed(2)}
         toStatus: ProjectStatus.sent_to_client,
         changedBy: adminId,
       },
+    });
+
+    // Trigger email: Client Delivery
+    this.emailTriggers.triggerClientDelivery({
+      projectId,
+      projectName: project.referenceNumber,
+      fileCount: project.deliverables.length,
+      downloadLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/download/${projectId}`,
+      expiresOn: new Date(Date.now() + 72 * 60 * 60 * 1000).toLocaleDateString(),
+      supportEmail: this.config.get<string>('SUPPORT_EMAIL') || 'support@example.com',
+      clientEmail: recipientEmail,
+    }).catch((err) => {
+      this.logger.warn('Failed to send client delivery email', err);
     });
 
     return { success: true, sentTo: recipientEmail };

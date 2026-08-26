@@ -4,12 +4,14 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../email/email.service';
+import { EmailTriggersService } from '../email/email.triggers.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { AuditEventType, UserRole } from '@prisma/client';
@@ -19,12 +21,15 @@ const LOGIN_LOCKOUT_MINUTES = 15;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private config: ConfigService,
     private audit: AuditService,
     private emailService: EmailService,
+    private emailTriggers: EmailTriggersService,
   ) {}
 
   async login(email: string, password: string) {
@@ -47,15 +52,36 @@ export class AuthService {
     if (!valid) {
       const newCount = (user.failedLogins ?? 0) + 1;
       const update: any = { failedLogins: newCount };
-      if (newCount >= LOGIN_LOCKOUT_ATTEMPTS) {
-        update.lockoutUntil = new Date(Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000);
-        update.failedLogins = 0;
-        await this.emailService.send({
-          to: user.email,
-          subject: 'Account Locked',
-          text: `Your account has been locked for ${LOGIN_LOCKOUT_MINUTES} minutes after ${LOGIN_LOCKOUT_ATTEMPTS} failed login attempts.`,
-        });
+      
+      // Send failed login alert on 3rd attempt
+      if (newCount === 3) {
+        await this.emailTriggers
+          .triggerFailedLoginAlert({
+            email: user.email,
+            attempts: newCount,
+            time: new Date().toISOString(),
+            supportEmail: this.config.get('SUPPORT_EMAIL') || 'support@aceservices.com',
+          })
+          .catch(err => this.logger.warn('Failed to send login alert', err));
       }
+      
+      // Lock account on 5th attempt
+      if (newCount >= LOGIN_LOCKOUT_ATTEMPTS) {
+        const lockoutTime = new Date(Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000);
+        update.lockoutUntil = lockoutTime;
+        update.failedLogins = 0;
+        
+        // Send account locked email
+        await this.emailTriggers
+          .triggerAccountLocked({
+            email: user.email,
+            time: new Date().toISOString(),
+            unlockTime: lockoutTime.toISOString(),
+            supportEmail: this.config.get('SUPPORT_EMAIL') || 'support@aceservices.com',
+          })
+          .catch(err => this.logger.warn('Failed to send lock email', err));
+      }
+      
       await this.prisma.user.update({ where: { id: user.id }, data: update });
       this.audit.log({
         eventType: AuditEventType.USER_LOGIN_FAILURE,
@@ -66,7 +92,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Reset failure counter
+    // Reset failure counter on successful login
     if (user.failedLogins > 0) {
       await this.prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0 } });
     }
@@ -76,6 +102,7 @@ export class AuthService {
       actorId: user.id,
       actorRole: user.role,
     });
+    
     return this.issueTokens(user.id, user.role);
   }
 
@@ -119,12 +146,17 @@ export class AuthService {
       actorRole: user.role,
     });
 
-    const resetUrl = `${this.config.get<string>('APP_BASE_URL')}/reset-password?token=${rawToken}`;
-    await this.emailService.send({
-      to: user.email,
-      subject: 'Password Reset Request',
-      text: `Click to reset your password:\n${resetUrl}\n\nThis link expires in 60 minutes.\n\nIf you didn't request this, ignore this email.`,
-    });
+    const resetUrl = `${this.config.get<string>('APP_BASE_URL') || 'https://yourdomain.com'}/reset-password?token=${rawToken}`;
+    
+    // Send password reset email
+    await this.emailTriggers
+      .triggerPasswordResetRequest({
+        email: user.email,
+        resetLink: resetUrl,
+        expiresIn: '60 minutes',
+        supportEmail: this.config.get('SUPPORT_EMAIL') || 'support@aceservices.com',
+      })
+      .catch(err => this.logger.warn('Failed to send password reset email', err));
   }
 
   async resetPassword(rawToken: string, newPassword: string) {
@@ -143,6 +175,15 @@ export class AuthService {
       this.prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } }),
       this.prisma.refreshToken.updateMany({ where: { userId: record.userId }, data: { revoked: true } }),
     ]);
+
+    // Send password changed confirmation email
+    await this.emailTriggers
+      .triggerPasswordChanged({
+        email: record.user.email,
+        time: new Date().toISOString(),
+        supportEmail: this.config.get('SUPPORT_EMAIL') || 'support@aceservices.com',
+      })
+      .catch(err => this.logger.warn('Failed to send password changed email', err));
 
     this.audit.log({
       eventType: AuditEventType.PASSWORD_RESET_COMPLETE,

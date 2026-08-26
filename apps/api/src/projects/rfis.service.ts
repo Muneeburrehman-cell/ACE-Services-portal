@@ -3,22 +3,27 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
+import { EmailTriggersService } from '../email/email.triggers.service';
 import { ConfigService } from '@nestjs/config';
 import { AuditEventType, UserRole } from '@prisma/client';
 import { CreateRfiDto, AnswerRfiDto } from './dto/create-rfi.dto';
 
 @Injectable()
 export class RfisService {
+  private logger = new Logger('RfisService');
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
     private notifications: NotificationsService,
     private emailService: EmailService,
+    private emailTriggers: EmailTriggersService,
     private config: ConfigService,
   ) {}
 
@@ -68,6 +73,21 @@ export class RfisService {
       console.error('[RfisService] Failed to send admin RFI email:', err);
     });
 
+    // Trigger email: RFI Created
+    this.emailTriggers.triggerRFICreated({
+      rfiId: rfi.id,
+      projectId,
+      title: dto.title,
+      question: dto.question,
+      deadline: '',
+      attachmentName: dto.attachmentName,
+      responseLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/admin/projects/${projectId}`,
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/admin/projects/${projectId}`,
+      recipients: [adminEmail],
+    }).catch((err) => {
+      this.logger.warn('Failed to send RFI created email', err);
+    });
+
     return rfi;
   }
 
@@ -108,6 +128,20 @@ export class RfisService {
       metadata: { projectId, rfiId },
     });
 
+    // Trigger email: RFI Answered
+    this.emailTriggers.triggerRFIAnswered({
+      rfiId,
+      projectId,
+      title: rfi.title,
+      question: rfi.question,
+      answer: dto.adminAnswer,
+      answeredOn: new Date().toLocaleString(),
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/engineer/projects/${projectId}`,
+      recipients: [rfi.engineer?.email || 'engineer@example.com'],
+    }).catch((err) => {
+      this.logger.warn('Failed to send RFI answered email', err);
+    });
+
     return updated;
   }
 
@@ -143,6 +177,22 @@ export class RfisService {
       actorRole: UserRole.ADMIN,
       targetId: projectId,
       metadata: { rfiId, clientEmail, title: rfi.title },
+    });
+
+    // Trigger email: RFI Forwarded to Client
+    this.emailTriggers.triggerRFIForwarded({
+      rfiId,
+      projectId,
+      title: rfi.title,
+      question: rfi.question,
+      clientName: rfi.project.clientContactPerson || rfi.project.clientCompanyName,
+      clientEmail: clientEmail,
+      forwardedOn: new Date().toLocaleString(),
+      responseDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/projects/${projectId}`,
+      recipients: [clientEmail],
+    }).catch((err) => {
+      this.logger.warn('Failed to send RFI forwarded email', err);
     });
 
     return { success: true, forwardedTo: clientEmail, rfi: updated };

@@ -12,6 +12,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { AuditModule } from './audit/audit.module';
 import { EmailModule } from './email/email.module';
+import { TasksModule } from './common/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { EmailModule } from './email/email.module';
     NotificationsModule,
     DeliveryModule,
     AuditModule,
+    TasksModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

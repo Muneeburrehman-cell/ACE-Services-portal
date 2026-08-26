@@ -3,11 +3,13 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
+import { EmailTriggersService } from '../email/email.triggers.service';
 import { ConfigService } from '@nestjs/config';
 import { AuditEventType, ProjectStatus, UserRole } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
@@ -17,11 +19,14 @@ import { UpdateProjectStatusDto, UpdateMerchantFeeDto } from './dto/update-statu
 
 @Injectable()
 export class ProjectsService {
+  private logger = new Logger('ProjectsService');
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
     private notifications: NotificationsService,
     private emailService: EmailService,
+    private emailTriggers: EmailTriggersService,
     private config: ConfigService,
   ) {}
 
@@ -86,6 +91,20 @@ export class ProjectsService {
       text: `Hello Administrator,\n\nA new client project has just been uploaded by BD Agent ${bdAgent?.fullName || 'BD Agent'} (${bdAgent?.email || ''}).\n\nProject Details:\n- Reference: ${referenceNumber}\n- Company: ${clientCompanyName}\n- Contact Person: ${clientContactPerson}\n- Salesperson: ${dto.salespersonName || 'N/A'}\n- Decided Price: $${decidedPrice ? decidedPrice.toFixed(2) : '0.00'}\n- Department: ${projectType === 'design_drafting' ? 'Design & Drafting' : 'Cost Estimation'}\n- Client Email: ${dto.clientEmail}\n- Client Phone: ${dto.clientPhone}\n- Requested Deadline: ${new Date(dto.requestedDeadline).toLocaleDateString()}\n\nScope Description:\n${dto.scopeDescription}\n\nPlease log in to the portal to review drawings and assign to an engineer:\nhttp://localhost:3000/admin/dashboard\n\nACE Services Portal Management System`,
     }).catch((err) => {
       console.error('[ProjectsService] Failed to send admin email notification:', err);
+    });
+
+    // Trigger email: Project Submitted
+    this.emailTriggers.triggerProjectSubmitted({
+      projectId: project.id,
+      projectName: referenceNumber,
+      clientName: clientCompanyName,
+      submittedBy: bdAgent?.fullName || 'BD Agent',
+      fileCount: 0,
+      time: new Date().toLocaleString(),
+      supportEmail: adminEmail,
+      recipients: [adminEmail],
+    }).catch((err) => {
+      this.logger.warn('Failed to send project submitted email', err);
     });
 
     return project;
@@ -206,7 +225,10 @@ export class ProjectsService {
   }
 
   async updateStatus(projectId: string, dto: UpdateProjectStatusDto, user: { sub: string; role: UserRole }) {
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { bdAgent: { select: { email: true, fullName: true } } },
+    });
     if (!project) throw new NotFoundException('Project not found');
 
     if (user.role === UserRole.BD_AGENT && project.bdAgentId !== user.sub) {
@@ -253,6 +275,21 @@ export class ProjectsService {
       actorRole: user.role,
       targetId: projectId,
       metadata: { fromStatus: project.status, toStatus: dto.status, followUpDate: dto.followUpDate },
+    });
+
+    // Trigger email: Project Status Changed
+    this.emailTriggers.triggerProjectStatusChanged({
+      projectId,
+      projectName: project.referenceNumber,
+      oldStatus: project.status,
+      newStatus: dto.status,
+      changedBy: user.sub,
+      time: new Date().toLocaleString(),
+      nextSteps: 'Your project status has been updated. Please log in to view details.',
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/projects/${projectId}`,
+      recipients: [project.bdAgent?.email || 'admin@example.com'],
+    }).catch((err) => {
+      this.logger.warn('Failed to send project status changed email', err);
     });
 
     return updated;
@@ -380,6 +417,21 @@ export class ProjectsService {
       }).catch((err) => {
         console.error('[ProjectsService] Failed to dispatch engineer notification email:', err);
       });
+
+      // Trigger email: Project Assigned
+      this.emailTriggers.triggerProjectAssigned({
+        projectId,
+        projectName: project.referenceNumber,
+        engineerName: engineer.fullName,
+        deadline: internalDueDate,
+        clientName: project.clientCompanyName,
+        clientEmail: project.clientEmail,
+        fileCount: 0,
+        portalLink: workspaceUrl,
+        engineerEmail: engineer.email,
+      }).catch((err) => {
+        this.logger.warn('Failed to send project assigned email', err);
+      });
     }
 
     return { success: true };
@@ -442,6 +494,149 @@ export class ProjectsService {
       title: 'Deliverables Ready for Review',
       body: `Engineer completed deliverables for project ${project.referenceNumber}. Ready for client dispatch.`,
       metadata: { projectId, referenceNumber: project.referenceNumber },
+    });
+
+    return { success: true };
+  }
+
+  async approveProject(projectId: string, adminId: string, notes?: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { assignedEngineer: { select: { fullName: true, email: true } } },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId },
+        data: { status: ProjectStatus.approved },
+      });
+      await tx.projectStatusHistory.create({
+        data: {
+          projectId,
+          fromStatus: project.status,
+          toStatus: ProjectStatus.approved,
+          changedBy: adminId,
+          notes: notes || 'Project deliverables approved by admin',
+        },
+      });
+    });
+
+    this.audit.log({
+      eventType: AuditEventType.PROJECT_STATUS_UPDATED,
+      actorId: adminId,
+      actorRole: UserRole.ADMIN,
+      targetId: projectId,
+      metadata: { action: 'APPROVED', notes },
+    });
+
+    // Trigger email: Project Approved
+    this.emailTriggers.triggerProjectApproved({
+      projectId,
+      projectName: project.referenceNumber,
+      approvedBy: 'Admin',
+      time: new Date().toLocaleString(),
+      nextSteps: 'Your project will be delivered to the client shortly',
+      expectedDelivery: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString(),
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/engineer/projects/${projectId}`,
+      recipients: [project.assignedEngineer?.email || 'engineer@example.com'],
+    }).catch((err) => {
+      this.logger.warn('Failed to send project approved email', err);
+    });
+
+    return { success: true };
+  }
+
+  async rejectProject(projectId: string, adminId: string, rejectionReason: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { assignedEngineer: { select: { fullName: true, email: true } } },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    if (!rejectionReason) throw new BadRequestException('Rejection reason is required');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId },
+        data: { status: ProjectStatus.declined },
+      });
+      await tx.projectStatusHistory.create({
+        data: {
+          projectId,
+          fromStatus: project.status,
+          toStatus: ProjectStatus.declined,
+          changedBy: adminId,
+          notes: `Rejected: ${rejectionReason}`,
+        },
+      });
+    });
+
+    this.audit.log({
+      eventType: AuditEventType.PROJECT_STATUS_UPDATED,
+      actorId: adminId,
+      actorRole: UserRole.ADMIN,
+      targetId: projectId,
+      metadata: { action: 'REJECTED', reason: rejectionReason },
+    });
+
+    // Trigger email: Project Rejected
+    this.emailTriggers.triggerProjectRejected({
+      projectId,
+      projectName: project.referenceNumber,
+      reason: rejectionReason,
+      feedback: 'Please review the feedback and resubmit if necessary',
+      supportEmail: this.config.get<string>('SUPPORT_EMAIL') || 'support@example.com',
+      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/engineer/projects/${projectId}`,
+      recipients: [project.assignedEngineer?.email || 'engineer@example.com'],
+    }).catch((err) => {
+      this.logger.warn('Failed to send project rejected email', err);
+    });
+
+    return { success: true };
+  }
+
+  async completeProject(projectId: string, adminId: string, completionNotes?: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { assignedEngineer: { select: { fullName: true, email: true } } },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId },
+        data: { status: ProjectStatus.sent_to_client },
+      });
+      await tx.projectStatusHistory.create({
+        data: {
+          projectId,
+          fromStatus: project.status,
+          toStatus: ProjectStatus.sent_to_client,
+          changedBy: adminId,
+          notes: completionNotes || 'Project marked complete',
+        },
+      });
+    });
+
+    this.audit.log({
+      eventType: AuditEventType.PROJECT_STATUS_UPDATED,
+      actorId: adminId,
+      actorRole: UserRole.ADMIN,
+      targetId: projectId,
+      metadata: { action: 'COMPLETED', notes: completionNotes },
+    });
+
+    // Trigger email: Project Completed (sent to client)
+    this.emailTriggers.triggerClientDelivery({
+      projectId,
+      projectName: project.referenceNumber,
+      fileCount: 0,
+      downloadLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/download/${projectId}`,
+      expiresOn: new Date(Date.now() + 72 * 60 * 60 * 1000).toLocaleDateString(),
+      supportEmail: this.config.get<string>('SUPPORT_EMAIL') || 'support@example.com',
+      clientEmail: project.clientEmail || '',
+    }).catch((err) => {
+      this.logger.warn('Failed to send project completed email', err);
     });
 
     return { success: true };

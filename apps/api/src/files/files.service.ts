@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailTriggersService } from '../email/email.triggers.service';
 import { UserRole } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -17,9 +19,12 @@ const STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 @Injectable()
 export class FilesService {
+  private logger = new Logger('FilesService');
+
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private emailTriggers: EmailTriggersService,
   ) {
     // Initialize storage directory
     if (!fs.existsSync(STORAGE_DIR)) {
@@ -55,15 +60,50 @@ export class FilesService {
       throw new BadRequestException('File not found in storage. Upload may have failed.');
     }
 
+    const project = await this.prisma.project.findUnique({
+      where: { id: dto.projectId },
+      select: { referenceNumber: true, clientCompanyName: true, assignedEngineer: { select: { fullName: true, email: true } } },
+    });
+
     if (dto.fileType === 'intake') {
       const file = await this.prisma.projectFile.create({
         data: { projectId: dto.projectId, originalName: dto.originalName, s3Key: dto.storageKey, mimeType: dto.mimeType, sizeBytes: BigInt(dto.sizeBytes) },
       });
+
+      // Trigger email: File Uploaded (intake)
+      this.emailTriggers.triggerFileUploaded({
+        fileName: dto.originalName,
+        projectId: dto.projectId,
+        uploadedBy: user.sub,
+        fileSize: `${(dto.sizeBytes / 1024 / 1024).toFixed(2)} MB`,
+        fileType: 'intake',
+        uploadedOn: new Date().toLocaleString(),
+        portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/projects/${dto.projectId}`,
+        recipients: ['admin@example.com'],
+      }).catch((err) => {
+        this.logger.warn('Failed to send file uploaded email', err);
+      });
+
       return { id: file.id, originalName: file.originalName };
     } else {
       const d = await this.prisma.deliverable.create({
         data: { projectId: dto.projectId, engineerId: user.sub, originalName: dto.originalName, s3Key: dto.storageKey, mimeType: dto.mimeType, sizeBytes: BigInt(dto.sizeBytes) },
       });
+
+      // Trigger email: Deliverable Uploaded
+      this.emailTriggers.triggerFileUploaded({
+        fileName: dto.originalName,
+        projectId: dto.projectId,
+        uploadedBy: user.sub,
+        fileSize: `${(dto.sizeBytes / 1024 / 1024).toFixed(2)} MB`,
+        fileType: 'deliverable',
+        uploadedOn: new Date().toLocaleString(),
+        portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/projects/${dto.projectId}`,
+        recipients: ['admin@example.com'],
+      }).catch((err) => {
+        this.logger.warn('Failed to send deliverable uploaded email', err);
+      });
+
       return { id: d.id, originalName: d.originalName };
     }
   }
