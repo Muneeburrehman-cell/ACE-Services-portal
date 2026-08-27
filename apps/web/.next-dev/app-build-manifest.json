@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/page": [
+    "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/login/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,10 +11,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/login/page": [
+    "/bd/submit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/login/page.js"
+      "static/chunks/app/bd/submit/page.js"
+    ],
+    "/bd/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/bd/layout.js"
     ],
     "/admin/dashboard/page": [
       "static/chunks/webpack.js",
@@ -31,25 +36,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/users/page.js"
     ],
+    "/setup/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/setup/page.js"
+    ],
     "/bd/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/bd/dashboard/page.js"
     ],
-    "/bd/layout": [
+    "/admin/projects/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/bd/layout.js"
+      "static/chunks/app/admin/projects/[id]/page.js"
     ],
-    "/bd/submit/page": [
+    "/engineer/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/bd/submit/page.js"
+      "static/chunks/app/engineer/dashboard/page.js"
     ],
-    "/_not-found/page": [
+    "/engineer/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/engineer/layout.js"
+    ],
+    "/engineer/projects/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/engineer/projects/[id]/page.js"
     ]
   }
 }

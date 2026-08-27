@@ -55,14 +55,28 @@ export class EmailService {
         }
         const res = await this.resend.emails.send(payload);
         if (res.error) {
-          this.logger.error(`Resend API error: ${res.error.message} (${res.error.name})`);
-          throw new Error(res.error.message);
+          // Check if it's a trial/domain restriction error
+          if (res.error.message?.includes('testing emails') || res.error.message?.includes('verify a domain')) {
+            this.logger.warn(`Resend trial restriction: can only email verified addresses. Falling back to demo mode for ${opts.to}`);
+            // Fall through to demo mode below
+          } else {
+            this.logger.error(`Resend API error: ${res.error.message} (${res.error.name})`);
+            throw new Error(res.error.message);
+          }
+        } else {
+          this.logger.log(`Email successfully sent via Resend to ${opts.to} (ID: ${res.data?.id})`);
+          return { success: true, provider: 'resend', messageId: res.data?.id };
         }
-        this.logger.log(`Email successfully sent via Resend to ${opts.to} (ID: ${res.data?.id})`);
-        return { success: true, provider: 'resend', messageId: res.data?.id };
       } catch (err: any) {
-        this.logger.error(`Resend email delivery failed: ${err.message}`, err.stack);
-        throw new Error(err.message);
+        const message = err.message || '';
+        // Check if it's a trial restriction error
+        if (message.includes('testing emails') || message.includes('verify a domain')) {
+          this.logger.warn(`Resend trial mode active: falling back to console logging for development`);
+          // Fall through to demo mode
+        } else {
+          this.logger.error(`Resend email delivery failed: ${err.message}`, err.stack);
+          throw new Error(err.message);
+        }
       }
     }
 

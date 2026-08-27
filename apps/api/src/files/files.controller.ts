@@ -61,7 +61,12 @@ export class FilesController {
   @Header('Access-Control-Allow-Methods', 'PUT, OPTIONS')
   @Header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   async upload(@Query('key') key: string, @Req() req: Request, @Res() res: Response) {
-    const safeName = (key ?? 'unknown').replace(/[/\\:*?"<>|]/g, '_');
+    // Validate key is provided and is a string
+    if (!key || typeof key !== 'string' || key.trim().length === 0) {
+      return res.status(400).json({ message: 'storageKey must be a string' });
+    }
+
+    const safeName = key.replace(/[/\\:*?"<>|]/g, '_');
     const filePath = path.join(STORAGE_DIR, safeName);
 
     try {
@@ -89,7 +94,12 @@ export class FilesController {
     @Query('key') key: string,
     @Res() res: Response,
   ) {
-    const safeName = (key ?? 'unknown').replace(/[/\\:*?"<>|]/g, '_');
+    // Validate key is provided and is a string
+    if (!key || typeof key !== 'string' || key.trim().length === 0) {
+      return res.status(400).json({ message: 'storageKey must be a string' });
+    }
+
+    const safeName = key.replace(/[/\\:*?"<>|]/g, '_');
     const filePath = path.join(STORAGE_DIR, safeName);
 
     if (fs.existsSync(filePath)) {

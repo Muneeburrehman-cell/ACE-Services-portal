@@ -108,8 +108,10 @@ export class UsersService {
       to: user.email,
       subject: `🎉 Welcome to ${companyName} — Activate Your ${roleFormatted} Workspace`,
       text: `Hello ${user.fullName},\n\nYour employee account has been created on the ${companyName} Portal.\n\nAssigned Role: ${roleFormatted}\n\nClick the link below to activate your account and set your secure password:\n${setPasswordUrl}\n\nThis activation link is personalized for ${user.email}. Do not share it with anyone.\n\nBest regards,\n${companyName} Administration Team`,
+    }).then((result) => {
+      console.log(`[UsersService] Welcome email sent to ${user.email} (${result.provider}): ${result.messageId}`);
     }).catch((err) => {
-      console.error('[UsersService] Failed to send employee setup email:', err);
+      console.error('[UsersService] Failed to send employee setup email to ' + user.email + ':', err.message);
     });
 
     return user;

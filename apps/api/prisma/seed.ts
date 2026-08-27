@@ -26,13 +26,13 @@ async function main() {
   console.log('All data cleared.\n');
 
   // Create production admin
-  const adminEmail = process.env.ADMIN_EMAIL || 'georgeadam2492@gmail.com';
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'Admin@123456';
+  const adminEmail = process.env.ADMIN_EMAIL || 'abdul.manan004@gmail.com';
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || '225580@aceservices';
 
   const passwordHash = await bcrypt.hash(adminPassword, 12);
   const admin = await prisma.user.create({
     data: {
-      fullName: 'George Adam',
+      fullName: 'ABDUL MANAN',
       email: adminEmail,
       passwordHash,
       role: UserRole.ADMIN,

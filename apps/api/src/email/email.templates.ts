@@ -677,11 +677,14 @@ Thank you for using ACE Services!
     question: string;
     deadline?: string;
     attachmentName?: string;
+    attachmentUrl?: string;
     responseLink: string;
     portalLink: string;
   }): EmailTemplate {
     const deadlineText = params.deadline ? `\nDeadline: ${params.deadline}` : '';
-    const attachmentText = params.attachmentName ? `\nAttachment: ${params.attachmentName}` : '';
+    const attachmentText = params.attachmentName 
+      ? `\nAttachment: ${params.attachmentName}${params.attachmentUrl ? `\nDownload: ${params.attachmentUrl}` : ''}` 
+      : '';
 
     const text = `
 Request for Information - ${params.projectId}
@@ -709,7 +712,7 @@ View in portal: ${params.portalLink}
       <p><strong>Title:</strong> ${params.title}</p>
       <p><strong>Question:</strong></p>
       <p style="margin-left: 20px;">${params.question}</p>
-      ${params.attachmentName ? `<p><strong>Attachment:</strong> ${params.attachmentName}</p>` : ''}
+      ${params.attachmentName ? `<p><strong>Attachment:</strong> ${params.attachmentName}${params.attachmentUrl ? `<br/><a href="${params.attachmentUrl}" style="color: #007bff; text-decoration: none;">📥 Download File</a>` : ''}</p>` : ''}
       ${params.deadline ? `<p><strong>Response deadline:</strong> ${params.deadline}</p>` : ''}
     </div>
     <p style="margin-top: 20px;">

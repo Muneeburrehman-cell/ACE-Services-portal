@@ -225,6 +225,7 @@ export class EmailTriggersService {
     question: string;
     deadline?: string;
     attachmentName?: string;
+    attachmentUrl?: string;
     responseLink: string;
     portalLink: string;
     recipients: string[];

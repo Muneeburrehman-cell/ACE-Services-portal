@@ -54,21 +54,24 @@ export class RfisService {
       actorId: engineerId,
       actorRole: UserRole.ESTIMATION_ENGINEER,
       targetId: projectId,
-      metadata: { rfiId: rfi.id, title: dto.title },
+      metadata: { rfiId: rfi.id, title: dto.title, hasAttachment: !!dto.attachmentS3Key },
     });
 
     await this.notifications.notifyAdmin('RFI_CREATED', {
       title: `New RFI: ${project.referenceNumber}`,
-      body: `Engineer ${project.assignedEngineer?.fullName || 'Engineer'} raised an RFI: "${dto.title}"`,
+      body: `Engineer ${project.assignedEngineer?.fullName || 'Engineer'} raised an RFI: "${dto.title}"${dto.attachmentName ? ` (with attachment: ${dto.attachmentName})` : ''}`,
       metadata: { projectId, rfiId: rfi.id, referenceNumber: project.referenceNumber },
     });
 
     // Send email alert to admin
-    const adminEmail = this.config.get<string>('ADMIN_EMAIL') || 'georgeadam2492@gmail.com';
+    const adminEmail = this.config.get<string>('ADMIN_EMAIL') || 'abdul.manan004@gmail.com';
+    const appBaseUrl = this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000';
+    const downloadLink = dto.attachmentS3Key ? `${appBaseUrl}/api/files/download?key=${encodeURIComponent(dto.attachmentS3Key)}` : null;
+
     this.emailService.send({
       to: adminEmail,
       subject: `❓ New Engineering RFI: ${project.referenceNumber} — ${dto.title}`,
-      text: `Hello Administrator,\n\nAssigned Engineer ${project.assignedEngineer?.fullName || 'Engineer'} has raised a Request for Information (RFI) for project ${project.referenceNumber} (${project.clientCompanyName || project.clientName}).\n\nRFI Subject: ${dto.title}\n\nQuestion / Clarification Details:\n${dto.question}\n\nSupporting Document: ${dto.attachmentName || 'None'}\n\nPlease review this in the admin portal to answer directly or forward to the client:\nhttp://localhost:3000/admin/projects/${projectId}\n\nACE Services Portal System`,
+      text: `Hello Administrator,\n\nAssigned Engineer ${project.assignedEngineer?.fullName || 'Engineer'} has raised a Request for Information (RFI) for project ${project.referenceNumber} (${project.clientCompanyName || project.clientName}).\n\nRFI Subject: ${dto.title}\n\nQuestion / Clarification Details:\n${dto.question}\n\n${dto.attachmentName ? `Supporting Attachment: ${dto.attachmentName}\nDownload: ${downloadLink}\n\n` : ''}Please review this in the admin portal to answer directly or forward to the client:\n${appBaseUrl}/admin/projects/${projectId}\n\nACE Services Portal System`,
     }).catch((err) => {
       console.error('[RfisService] Failed to send admin RFI email:', err);
     });
@@ -80,9 +83,10 @@ export class RfisService {
       title: dto.title,
       question: dto.question,
       deadline: '',
-      attachmentName: dto.attachmentName,
-      responseLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/admin/projects/${projectId}`,
-      portalLink: `${this.config.get<string>('APP_BASE_URL') || 'http://localhost:3000'}/admin/projects/${projectId}`,
+      attachmentName: dto.attachmentName || undefined,
+      attachmentUrl: downloadLink || undefined,
+      responseLink: `${appBaseUrl}/admin/projects/${projectId}`,
+      portalLink: `${appBaseUrl}/admin/projects/${projectId}`,
       recipients: [adminEmail],
     }).catch((err) => {
       this.logger.warn('Failed to send RFI created email', err);

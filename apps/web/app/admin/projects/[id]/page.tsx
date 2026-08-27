@@ -225,6 +225,16 @@ TOTAL AMOUNT DUE:             $${totalDue.toFixed(2)}
     }
   }
 
+  async function downloadRfiAttachment(storageKey: string, fileName: string) {
+    try {
+      // Generate download URL using the storage key directly
+      const downloadUrl = `/api/files/download?key=${encodeURIComponent(storageKey)}`;
+      window.open(downloadUrl, '_blank');
+    } catch (err: any) {
+      showToast('Failed to download attachment', 'error');
+    }
+  }
+
   if (!project) {
     return (
       <div className="max-w-5xl mx-auto space-y-4">
@@ -438,9 +448,20 @@ TOTAL AMOUNT DUE:             $${totalDue.toFixed(2)}
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 whitespace-pre-wrap">{rfi.question}</p>
                       {rfi.attachmentName && (
-                        <p className="text-xs text-yellow-300 font-mono mt-1 flex items-center gap-1">
-                          📎 Attachment: {rfi.attachmentName}
-                        </p>
+                        <div className="text-xs text-yellow-300 font-mono mt-2 flex items-center justify-between gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                          <span className="flex items-center gap-1">
+                            📎 {rfi.attachmentName}
+                          </span>
+                          {rfi.attachmentS3Key && (
+                            <button
+                              onClick={() => downloadRfiAttachment(rfi.attachmentS3Key, rfi.attachmentName)}
+                              className="text-yellow-400 hover:text-yellow-300 text-xs px-2 py-1 rounded hover:bg-yellow-500/20 transition-colors cursor-pointer"
+                              title="Download attachment"
+                            >
+                              📥 Download
+                            </button>
+                          )}
+                        </div>
                       )}
                       <p className="text-[10px] text-zinc-500 mt-2">
                         Raised by {rfi.engineer?.fullName || 'Assigned Engineer'} on {new Date(rfi.createdAt).toLocaleString()}

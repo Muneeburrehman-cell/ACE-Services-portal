@@ -22,7 +22,7 @@ export function FileUploader({ projectId, fileType, onUpload, disabled }: {
       if (file.size > MAX_SIZE) { setError(`${file.name} exceeds 100 MB`); continue; }
       setUploading(true); setProgress(10);
       try {
-        const { uploadUrl, s3Key } = await api.post<any>('/files/upload-url', {
+        const { uploadUrl, storageKey } = await api.post<any>('/files/upload-url', {
           projectId, fileName: file.name,
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size, fileType,
@@ -39,7 +39,7 @@ export function FileUploader({ projectId, fileType, onUpload, disabled }: {
         });
         setProgress(95);
         const confirmed = await api.post<UploadedFile>('/files/confirm', {
-          projectId, s3Key, originalName: file.name,
+          projectId, storageKey, originalName: file.name,
           mimeType: file.type, sizeBytes: file.size, fileType,
         });
         setProgress(100); onUpload(confirmed);

@@ -21,7 +21,10 @@ export default function EngineerProjectDetail() {
   const [rfiTitle, setRfiTitle] = useState('');
   const [rfiQuestion, setRfiQuestion] = useState('');
   const [rfiAttachmentName, setRfiAttachmentName] = useState('');
+  const [rfiAttachmentFile, setRfiAttachmentFile] = useState<File | null>(null);
+  const [rfiAttachmentKey, setRfiAttachmentKey] = useState<string | null>(null);
   const [rfiSubmitting, setRfiSubmitting] = useState(false);
+  const [rfiAttachmentUploading, setRfiAttachmentUploading] = useState(false);
 
   // Mark Delivered State
   const [markingDelivered, setMarkingDelivered] = useState(false);
@@ -69,17 +72,54 @@ export default function EngineerProjectDetail() {
         title: rfiTitle,
         question: rfiQuestion,
         attachmentName: rfiAttachmentName || undefined,
+        attachmentS3Key: rfiAttachmentKey || undefined,
       });
       setShowRfiModal(false);
       setRfiTitle('');
       setRfiQuestion('');
       setRfiAttachmentName('');
+      setRfiAttachmentFile(null);
+      setRfiAttachmentKey(null);
       showToast('RFI submitted to Administrator ✓');
       await loadProject();
     } catch (err: any) {
       showToast(err.message || 'Failed to submit RFI');
     } finally {
       setRfiSubmitting(false);
+    }
+  }
+
+  async function handleRfiAttachmentUpload(file: File) {
+    setRfiAttachmentUploading(true);
+    try {
+      // Step 1: Get upload URL for the attachment
+      const { uploadUrl, storageKey } = await api.post<any>('/files/upload-url', {
+        projectId: id,
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        fileType: 'intake',
+      });
+
+      // Step 2: Upload the file
+      await new Promise<void>((res, rej) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.onload = () => (xhr.status < 300 ? res() : rej(new Error('Upload failed')));
+        xhr.onerror = () => rej(new Error('Network error'));
+        xhr.send(file);
+      });
+
+      // Step 3: Store the attachment key and name
+      setRfiAttachmentKey(storageKey);
+      setRfiAttachmentFile(file);
+      setRfiAttachmentName(file.name);
+      showToast(`Attachment uploaded: ${file.name}`);
+    } catch (err: any) {
+      showToast(`Failed to upload attachment: ${err.message || 'Unknown error'}`);
+    } finally {
+      setRfiAttachmentUploading(false);
     }
   }
 
@@ -423,28 +463,76 @@ export default function EngineerProjectDetail() {
 
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
-                  Supporting Document Reference (Optional)
+                  Supporting Attachment (Optional)
                 </label>
-                <input
-                  type="text"
-                  value={rfiAttachmentName}
-                  onChange={(e) => setRfiAttachmentName(e.target.value)}
-                  className="input text-sm"
-                  placeholder="e.g. Sheet A-201 Section 4"
-                />
+                {!rfiAttachmentFile ? (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-zinc-700 hover:border-yellow-400/50 rounded-lg p-4 text-center transition-colors">
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleRfiAttachmentUpload(e.target.files[0]);
+                          }
+                        }}
+                        disabled={rfiAttachmentUploading}
+                        className="hidden"
+                        accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.xlsx,.docx,.zip,.xls,.doc"
+                      />
+                      <svg className="w-6 h-6 mx-auto mb-2 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-4m0 0V8m0 4h4m-4 0H8" />
+                      </svg>
+                      <p className="text-sm text-zinc-300 font-medium">
+                        {rfiAttachmentUploading ? 'Uploading...' : 'Click to upload or drag & drop'}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">PDF, DWG, DXF, Images, Excel, ZIP (Max 100MB)</p>
+                    </div>
+                  </label>
+                ) : (
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2.25 12a6.75 6.75 0 1111.25 5.6L12 20.55a.75.75 0 11-1.06-1.06l.31-.31a.75.75 0 00-1.06 0l-.5.5a.75.75 0 11-1.06-1.06l.5-.5a.75.75 0 00-1.06 0l-.5.5a.75.75 0 11-1.06-1.06l.5-.5a.75.75 0 00-1.06 0l-.31.31a.75.75 0 11-1.06-1.06l.31-.31z" />
+                      </svg>
+                      <div className="text-left">
+                        <p className="text-xs font-semibold text-emerald-300">{rfiAttachmentName}</p>
+                        <p className="text-[10px] text-emerald-400">✓ Ready to submit</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRfiAttachmentFile(null);
+                        setRfiAttachmentKey(null);
+                        setRfiAttachmentName('');
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 text-lg p-1 cursor-pointer"
+                      title="Remove attachment"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowRfiModal(false)}
+                  onClick={() => {
+                    setShowRfiModal(false);
+                    setRfiTitle('');
+                    setRfiQuestion('');
+                    setRfiAttachmentName('');
+                    setRfiAttachmentFile(null);
+                    setRfiAttachmentKey(null);
+                  }}
                   className="btn-secondary flex-1 py-2.5 text-xs text-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={rfiSubmitting}
+                  disabled={rfiSubmitting || rfiAttachmentUploading}
                   className="btn-primary flex-1 py-2.5 text-xs font-bold text-center cursor-pointer"
                 >
                   {rfiSubmitting ? 'Submitting...' : 'Send RFI to Admin ✓'}

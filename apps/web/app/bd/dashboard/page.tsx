@@ -94,8 +94,6 @@ export default function BDDashboard() {
     return true;
   });
 
-  const totalValue = projects.reduce((acc, p) => acc + (Number(p.decidedPrice) || Number(p.totalPrice) || 0), 0);
-
   return (
     <div className="space-y-7">
       {/* Header with Quick Actions */}
@@ -135,18 +133,11 @@ export default function BDDashboard() {
       </div>
 
       {/* Commercial Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="glass-card p-5 border-zinc-800">
           <p className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Submissions</p>
           <p className="font-display text-3xl font-bold text-white">{projects.length}</p>
           <p className="text-zinc-500 text-xs mt-1">Total active & logged deals</p>
-        </div>
-        <div className="glass-card p-5 border-emerald-500/30 bg-emerald-500/5">
-          <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">Agreed Value</p>
-          <p className="font-display text-3xl font-bold text-emerald-400">
-            ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-zinc-500 text-xs mt-1">Total cumulative contract volume</p>
         </div>
         <div className="glass-card p-5 border-blue-500/30 bg-blue-500/5">
           <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider mb-1">Cost Estimation</p>
@@ -262,7 +253,6 @@ export default function BDDashboard() {
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Ref</th>
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Client & Contact</th>
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Salesperson</th>
-                  <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Agreed Value ($)</th>
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Department</th>
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Status</th>
                   <th className="px-4 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Actions</th>
@@ -311,17 +301,6 @@ export default function BDDashboard() {
                           </span>
                         ) : (
                           <span className="text-zinc-600 italic">Unassigned</span>
-                        )}
-                      </td>
-
-                      {/* Decided Price */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        {p.decidedPrice ? (
-                          <span className="font-mono text-sm font-bold text-emerald-400">
-                            ${Number(p.decidedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-zinc-600 font-mono">TBD</span>
                         )}
                       </td>
 
