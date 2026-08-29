@@ -192,10 +192,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-zinc-600 text-xs mt-6 font-mono">
-          © {new Date().getFullYear()} ACE SERVICES · Construction Estimation Management Portal
+        <p className="text-center text-zinc-600 text-xs mt-6 font-mono" suppressHydrationWarning>© {new Date().getFullYear()} ACE SERVICES · Construction Estimation Management Portal
         </p>
       </div>
     </div>
   );
 }
+

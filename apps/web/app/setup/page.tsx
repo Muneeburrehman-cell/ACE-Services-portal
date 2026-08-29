@@ -279,8 +279,7 @@ function SetupForm() {
         )}
       </div>
 
-      <p className="text-center text-zinc-600 text-xs mt-6">
-        © {new Date().getFullYear()} ACE SERVICES · Construction Estimation Portal
+      <p className="text-center text-zinc-600 text-xs mt-6" suppressHydrationWarning>© {new Date().getFullYear()} ACE SERVICES · Construction Estimation Portal
       </p>
     </div>
   );
@@ -301,3 +300,5 @@ export default function SetupPage() {
     </div>
   );
 }
+
+

@@ -6,6 +6,7 @@ import { api, getAccessToken } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { DeadlineCountdown } from '@/components/ui/DeadlineCountdown';
+import { CreateProjectModal } from '@/components/ui/CreateProjectModal';
 
 const STATUSES = [
   { id: '',               label: 'All Active',      color: 'text-zinc-100',  bg: 'bg-zinc-800' },
@@ -28,12 +29,17 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [deptFilter, setDeptFilter] = useState<'all' | 'estimation' | 'design_drafting'>('all');
+  const [clientFilter, setClientFilter] = useState('');
+  const [clientOptions, setClientOptions] = useState<string[]>([]);
   const [engineers, setEngineers] = useState<any[]>([]);
   const [mounted, setMounted] = useState(false);
 
   // Excel Export State
   const [exportLoading, setExportLoading] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Create Project Modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Assign Modal
   const [assigningProject, setAssigningProject] = useState<any | null>(null);
@@ -142,6 +148,23 @@ export default function AdminDashboard() {
       if (!target.closest('[data-export-menu]')) setShowExportMenu(false);
     };
     document.addEventListener('mousedown', onClickOutside);
+    
+    // Fetch and populate unique clients for filtering
+    const populateClients = () => {
+      const uniqueClients = Array.from(
+        new Map(
+          allProjects
+            .filter(p => p.clientCompanyName)
+            .map(p => [p.clientCompanyName, p])
+        ).values()
+      ).map(p => p.clientCompanyName).sort();
+      setClientOptions(uniqueClients);
+    };
+    
+    if (allProjects.length > 0) {
+      populateClients();
+    }
+    
     // Increased to 30s to reduce DB pressure; data still auto-refreshes
     const interval = setInterval(() => {
       load();
@@ -199,9 +222,12 @@ export default function AdminDashboard() {
     }
   }
 
-  // Filter projects by department
+  // Filter projects by department and client
   const displayedProjects = projects.filter((p) => {
     if (deptFilter !== 'all' && (p.projectType || 'estimation') !== deptFilter) {
+      return false;
+    }
+    if (clientFilter && p.clientCompanyName !== clientFilter) {
       return false;
     }
     return true;
@@ -378,6 +404,16 @@ export default function AdminDashboard() {
             </svg>
             Refresh
           </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary text-xs py-2.5 px-4 flex items-center gap-2 cursor-pointer"
+            title="Create a new project"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Project
+          </button>
           <Link
             href="/admin/users"
             className="btn-secondary text-xs py-2.5 px-4 flex items-center gap-2"
@@ -463,6 +499,31 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Client Filter Dropdown */}
+        <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/80">
+          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">Filter by Client:</label>
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="input text-xs py-1.5 px-2 bg-zinc-900 border-zinc-700 flex-1 max-w-xs"
+          >
+            <option value="">All Clients</option>
+            {clientOptions.map((client) => (
+              <option key={client} value={client}>
+                {client}
+              </option>
+            ))}
+          </select>
+          {clientFilter && (
+            <button
+              onClick={() => setClientFilter('')}
+              className="text-xs font-semibold text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer"
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+
         {/* Status Pills */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-zinc-800/80">
           {STATUSES.map((st) => (
@@ -540,7 +601,7 @@ export default function AdminDashboard() {
                           <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
                           {p.referenceNumber}
                         </Link>
-                        <p className="text-[10px] text-zinc-500 font-sans mt-0.5">
+                        <p className="text-[10px] text-zinc-500 font-sans mt-0.5" suppressHydrationWarning>
                           {new Date(p.submittedAt).toLocaleDateString()}
                         </p>
                       </td>
@@ -746,6 +807,16 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* ── Create Project Modal ── */}
+      <CreateProjectModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => load()}
+        onToast={showToast}
+      />
     </div>
   );
 }
+
+

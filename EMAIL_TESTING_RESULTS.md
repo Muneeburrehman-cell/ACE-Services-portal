@@ -14,7 +14,7 @@ All 54 email triggers have been successfully tested in LIVE mode using the Resen
 - Backend API: http://localhost:4000
 - Frontend: http://localhost:3000  
 - Admin Account: abdul.manan004@gmail.com / 225580@aceservices
-- Resend API Key: re_8DHFJJhU_ibR4aWW6kMiUPPocnFXJbH8m
+- Resend API Key: (set in .env - do not commit)
 - Mode: LIVE EMAIL SENDING
 
 ---

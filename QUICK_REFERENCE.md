@@ -9,7 +9,7 @@
 | **Admin Email** | abdul.manan004@gmail.com |
 | **Admin Password** | 225580@aceservices |
 | **Resend Dashboard** | https://resend.com/emails |
-| **Email API Key** | re_8DHFJJhU_ibR4aWW6kMiUPPocnFXJbH8m |
+| **Email API Key** | (set in .env - do not commit) |
 
 ---
 
@@ -195,7 +195,7 @@ Backend logs are printed in the terminal where npm run dev is running
 
 ### Emails Not Sending?
 1. Check Resend API key in `.env` file
-2. Verify key: `re_8DHFJJhU_ibR4aWW6kMiUPPocnFXJbH8m`
+2. Verify key is set correctly in `.env` file
 3. Check Resend dashboard for errors
 4. Restart backend service
 

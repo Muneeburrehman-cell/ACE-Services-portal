@@ -28,6 +28,13 @@ export class ProjectsController {
     return this.projects.create(dto, req.user.sub);
   }
 
+  @Post('admin/create')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  createAsAdmin(@Body() dto: CreateProjectDto, @Req() req: any) {
+    return this.projects.createAsAdmin(dto, req.user.sub);
+  }
+
   @Get('export/weekly-excel')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -49,6 +56,13 @@ export class ProjectsController {
   @Get()
   findAll(@Req() req: any, @Query() query: any) {
     return this.projects.findAll(req.user, query);
+  }
+
+  @Get('by-client/:clientCompanyName')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  getProjectsByClient(@Param('clientCompanyName') clientCompanyName: string, @Req() req: any) {
+    return this.projects.findByClient(clientCompanyName);
   }
 
   @Get(':id')

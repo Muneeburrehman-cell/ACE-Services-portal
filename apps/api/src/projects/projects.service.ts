@@ -110,6 +110,99 @@ export class ProjectsService {
     return project;
   }
 
+  async createAsAdmin(dto: CreateProjectDto, adminId: string) {
+    // Similar to create() but marked as admin-created
+    const referenceNumber = await this.generateReferenceNumber();
+    const clientCompanyName = dto.clientCompanyName || dto.clientName || 'Client Company';
+    const clientContactPerson = dto.clientContactPerson || 'Primary Contact';
+    const clientName = `${clientCompanyName} (${clientContactPerson})`;
+    const decidedPrice = dto.decidedPrice ? Number(dto.decidedPrice) : null;
+    const projectType = dto.projectType || 'estimation';
+
+    const project = await this.prisma.$transaction(async (tx) => {
+      const p = await tx.project.create({
+        data: {
+          referenceNumber,
+          bdAgentId: adminId, // Admin is the creator
+          clientCompanyName,
+          clientContactPerson,
+          salespersonName: dto.salespersonName || null,
+          decidedPrice,
+          totalPrice: decidedPrice,
+          clientName,
+          clientEmail: dto.clientEmail,
+          clientPhone: dto.clientPhone,
+          scopeDescription: dto.scopeDescription,
+          requestedDeadline: new Date(dto.requestedDeadline),
+          projectType,
+          status: ProjectStatus.received,
+        },
+      });
+      await tx.projectStatusHistory.create({
+        data: {
+          projectId: p.id,
+          fromStatus: null,
+          toStatus: ProjectStatus.received,
+          changedBy: adminId,
+        },
+      });
+      return p;
+    });
+
+    this.audit.log({
+      eventType: AuditEventType.PROJECT_SUBMITTED,
+      actorId: adminId,
+      actorRole: UserRole.ADMIN,
+      targetId: project.id,
+      metadata: { referenceNumber, clientCompanyName, decidedPrice, salespersonName: dto.salespersonName },
+    });
+
+    await this.notifications.notifyAdmin('PROJECT_SUBMITTED', {
+      title: 'New Project Created',
+      body: `Project ${referenceNumber} (${clientCompanyName}) has been created by admin. Price: $${decidedPrice || 0}.`,
+      metadata: { projectId: project.id, referenceNumber },
+    });
+
+    // Send email notification
+    const adminEmail = this.config.get<string>('ADMIN_EMAIL') || 'georgeadam2492@gmail.com';
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { fullName: true, email: true } });
+    this.emailService.send({
+      to: adminEmail,
+      subject: `🚀 New Project Created: ${referenceNumber} — ${clientCompanyName}`,
+      text: `Hello Administrator,\n\nA new client project has been created.\n\nProject Details:\n- Reference: ${referenceNumber}\n- Company: ${clientCompanyName}\n- Contact Person: ${clientContactPerson}\n- Salesperson: ${dto.salespersonName || 'N/A'}\n- Decided Price: $${decidedPrice ? decidedPrice.toFixed(2) : '0.00'}\n- Department: ${projectType === 'design_drafting' ? 'Design & Drafting' : 'Cost Estimation'}\n- Client Email: ${dto.clientEmail}\n- Client Phone: ${dto.clientPhone}\n- Requested Deadline: ${new Date(dto.requestedDeadline).toLocaleDateString()}\n\nScope Description:\n${dto.scopeDescription}\n\nPlease log in to the portal to review and assign to an engineer:\nhttp://localhost:3000/admin/dashboard\n\nACE Services Portal Management System`,
+    }).catch((err) => {
+      console.error('[ProjectsService] Failed to send admin email notification:', err);
+    });
+
+    return project;
+  }
+
+  async findByClient(clientCompanyName: string) {
+    // Get all projects for a specific client company
+    const projects = await this.prisma.project.findMany({
+      where: {
+        clientCompanyName: {
+          contains: clientCompanyName,
+          mode: 'insensitive',
+        },
+      },
+      include: {
+        files: true,
+        assignedEngineer: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    return projects;
+  }
+
   async findAll(user: { sub: string; role: UserRole }, filters: any) {
     const { status, engineerId, projectType, from, to, search, page = 1, limit = 100 } = filters;
     const safeLimit = Math.min(Number(limit), 200);
