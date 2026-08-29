@@ -112,7 +112,7 @@ export class ProjectsService {
 
   async createAsAdmin(dto: CreateProjectDto, adminId: string) {
     // Similar to create() but marked as admin-created
-    const referenceNumber = await this.generateReferenceNumber();
+    const referenceNumber = dto.referenceNumber || (await this.generateReferenceNumber());
     const clientCompanyName = dto.clientCompanyName || dto.clientName || 'Client Company';
     const clientContactPerson = dto.clientContactPerson || 'Primary Contact';
     const clientName = `${clientCompanyName} (${clientContactPerson})`;
@@ -1353,4 +1353,5 @@ export class ProjectsService {
     };
   }
 }
+
 

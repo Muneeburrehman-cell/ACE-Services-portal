@@ -33,6 +33,7 @@ export function CreateProjectModal({
       requestedDeadline: '',
       decidedPrice: '',
       salespersonName: '',
+      referenceNumber: '',
       projectType: 'estimation',
       useExistingClient: false,
     },
@@ -107,6 +108,7 @@ export function CreateProjectModal({
         scopeDescription: data.scopeDescription,
         requestedDeadline: data.requestedDeadline,
         projectType: data.projectType,
+        referenceNumber: data.referenceNumber || undefined,
       };
 
       await api.post('/projects/admin/create', payload);
@@ -249,6 +251,18 @@ export function CreateProjectModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
+                  Reference Number
+                </label>
+                <input
+                  type="text"
+                  {...register('referenceNumber')}
+                  placeholder="e.g., PRJ-2024-001 (auto-generated if left empty)"
+                  className="input text-sm"
+                />
+                <p className="text-xs text-zinc-500 mt-1">Leave empty to auto-generate</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
                   Project Type *
                 </label>
                 <select
@@ -259,19 +273,20 @@ export function CreateProjectModal({
                   <option value="design_drafting">🏛️ Design & Drafting</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
-                  Deadline *
-                </label>
-                <input
-                  type="date"
-                  {...register('requestedDeadline', { required: 'Deadline is required' })}
-                  className="input text-sm"
-                />
-                {errors.requestedDeadline && (
-                  <p className="text-xs text-red-400 mt-1">{String(errors.requestedDeadline.message)}</p>
-                )}
-              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">
+                Deadline *
+              </label>
+              <input
+                type="date"
+                {...register('requestedDeadline', { required: 'Deadline is required' })}
+                className="input text-sm"
+              />
+              {errors.requestedDeadline && (
+                <p className="text-xs text-red-400 mt-1">{String(errors.requestedDeadline.message)}</p>
+              )}
             </div>
 
             <div>
@@ -343,3 +358,7 @@ export function CreateProjectModal({
     </div>
   );
 }
+
+
+
+
